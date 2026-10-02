@@ -41,6 +41,8 @@ setup_logging() {
   exec > >(tee -a "$LOG_FILE") 2>&1
   trap 'status=$?; trap - ERR; printf "[ERROR] at line %s (exit %s): %s\n" "$LINENO" "$status" "$BASH_COMMAND" >> "$LOG_FILE"; exit "$status"' ERR
   log_info "Full terminal log: $LOG_FILE"
+  export PS4='+ [${BASH_SOURCE[0]##*/}:${LINENO}:${FUNCNAME[0]:-main}] '
+  set -x
   printf 'Started: %s\nScript: %s\nProject directory: %s\nWorking directory: %s\n' \
     "$(date --iso-8601=seconds)" "$SCRIPT_PATH" "$REPO_DIR" "$PWD" >>"$LOG_FILE"
 }
