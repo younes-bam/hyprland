@@ -12,7 +12,7 @@ wall_link="$HOME/.config/hypr/current_hyprlock_wallpaper.jpg"
 
 wal -i "$wallpaper" -n -q
 ln -sfn "$wallpaper" "$wall_link"
-swww img "$wallpaper" --transition-type wipe --transition-angle 30 --transition-step 90
+awww img "$wallpaper" --transition-type wipe --transition-angle 30 --transition-step 90
 
 # Reload Hyprland colors and let Waybar detect the regenerated Pywal stylesheet.
 hyprctl reload

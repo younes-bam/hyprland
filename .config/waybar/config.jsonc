@@ -14,7 +14,7 @@
     "modules-right": [
       "memory",
       "temperature",
-      "network",
+      "tray",
       "wireplumber",
       "backlight",
       "battery",
@@ -88,11 +88,9 @@
       "format": "{icon} {percent}%",
       "format-icons": ["󰃞", "󰃟", "󰃠"],
     },
-    "network": {
-      // "interface": "wlp2*", // (Optional) To force the use of this interface
-      "format-wifi": " ",
-      "format-ethernet": "󰈁 {ifname}",
-      "format-disconnected": "⚠ Disconnected ",
+    "tray": {
+      "icon-size": 20,
+      "spacing": 6,
     },
     "temperature": {
       "interval": 10,

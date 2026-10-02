@@ -97,7 +97,7 @@ install_packages() {
     brightnessctl playerctl grim slurp jq wl-clipboard libnotify
     polkit-gnome fcitx5 fcitx5-gtk fcitx5-qt qt6ct
     cava fastfetch htop neovim fzf git
-    networkmanager nm-connection-editor bluez bluez-utils blueman
+    networkmanager network-manager-applet nm-connection-editor bluez bluez-utils blueman
     pipewire pipewire-pulse pipewire-alsa wireplumber
     python bc imagemagick
     ttf-jetbrains-mono-nerd ttf-firacode-nerd noto-fonts-emoji
@@ -192,7 +192,7 @@ install_local_scripts() {
 
 collect_missing_dependencies() {
   MISSING_DEPENDENCIES=()
-  local required_commands=(Hyprland hyprctl kitty waybar swaync swaync-client awww awww-daemon wal rofi wlogout hypridle hyprlock grim slurp jq wl-copy notify-send brightnessctl pactl wpctl playerctl nmtui nmcli nm-connection-editor fcitx5 cava python bc magick pipewire wireplumber dbus-update-activation-environment)
+  local required_commands=(Hyprland hyprctl kitty waybar swaync swaync-client awww awww-daemon wal rofi wlogout hypridle hyprlock grim slurp jq wl-copy notify-send brightnessctl pactl wpctl playerctl nmtui nmcli nm-applet nm-connection-editor fcitx5 cava python bc magick pipewire wireplumber dbus-update-activation-environment)
 
   for command_name in "${required_commands[@]}"; do
     command -v "$command_name" >/dev/null 2>&1 || MISSING_DEPENDENCIES+=("$command_name")
@@ -216,6 +216,7 @@ package_for_dependency() {
     wpctl) echo wireplumber ;;
     pipewire) echo pipewire ;;
     nmtui|nmcli) echo networkmanager ;;
+    nm-applet) echo network-manager-applet ;;
     magick) echo imagemagick ;;
     dbus-update-activation-environment) echo dbus ;;
     "Bibata-Modern-Ice cursor theme") echo bibata-cursor-theme ;;

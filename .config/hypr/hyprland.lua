@@ -93,7 +93,6 @@ hl.animation({ leaf = "layersOut", enabled = true, speed = 4, bezier = "myBezier
 hl.on("hyprland.start", function()
   hl.exec_cmd("dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_RUNTIME_DIR XDG_CURRENT_DESKTOP=Hyprland")
   hl.exec_cmd("/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1")
-  hl.exec_cmd("swww-daemon")
   hl.exec_cmd(home .. "/.local/bin/start_wallpaper.sh")
   hl.exec_cmd(home .. "/.local/bin/battery_notif.sh")
   hl.exec_cmd("hypridle")
@@ -101,6 +100,7 @@ hl.on("hyprland.start", function()
   hl.exec_cmd("fcitx5")
   hl.exec_cmd(home .. "/.local/bin/volume_notif.sh daemon")
   hl.exec_cmd("waybar")
+  hl.exec_cmd("nm-applet --indicator")
   hl.exec_cmd("swaync")
 end)
 
@@ -111,14 +111,17 @@ hl.bind(main_mod .. " + M", hl.dsp.exit())
 hl.bind(main_mod .. " + F", hl.dsp.window.fullscreen())
 hl.bind(main_mod .. " + T", hl.dsp.window.float())
 hl.bind(main_mod .. " + D", hl.dsp.exec_cmd(launcher))
-hl.bind(main_mod .. " + N", hl.dsp.exec_cmd("kitty -- nmtui"))
 hl.bind(main_mod .. " + R", hl.dsp.exec_cmd(random_wallpaper))
 hl.bind(main_mod .. " + P", hl.dsp.window.pseudo())
 hl.bind(main_mod .. " + V", hl.dsp.layout("togglesplit"))
 hl.bind(main_mod .. " + W", hl.dsp.exec_cmd(wallpaper_picker))
 
--- Focus and swap windows with the existing Vim-style keys.
+-- Focus and swap windows with Vim keys or arrow keys.
 for key, direction in pairs({ h = "left", j = "down", k = "up", l = "right" }) do
+  hl.bind(main_mod .. " + " .. key, hl.dsp.focus({ direction = direction }))
+  hl.bind(main_mod .. " + SHIFT + " .. key, hl.dsp.window.swap({ direction = direction }))
+end
+for key, direction in pairs({ left = "left", down = "down", up = "up", right = "right" }) do
   hl.bind(main_mod .. " + " .. key, hl.dsp.focus({ direction = direction }))
   hl.bind(main_mod .. " + SHIFT + " .. key, hl.dsp.window.swap({ direction = direction }))
 end

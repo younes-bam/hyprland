@@ -171,7 +171,7 @@ button {
   margin-right: 7px;
   border-radius: 20px;
 }
-#network {
+#tray {
   margin-right: 7px;
   color: #29e35a;
   margin-top: 7px;
@@ -219,11 +219,6 @@ button {
   animation-iteration-count: infinite;
   animation-direction: alternate;
 }
-#network.disconnected {
-  color: #ff5555;
-  font-weight: bold;
-}
-
 #wireplumber.muted {
   color: @muted;
 }
@@ -245,7 +240,7 @@ button {
 #clock,
 #battery,
 #mpris,
-#network,
+#tray,
 #load {
   border-right: 1px solid rgba(110, 106, 134, 0.2);
 }
