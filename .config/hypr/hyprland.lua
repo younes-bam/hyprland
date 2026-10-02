@@ -61,7 +61,7 @@ hl.config({
     disable_hyprland_logo = false,
   },
   input = {
-    kb_layout = "us",
+    kb_layout = "fr",
     kb_variant = "",
     kb_model = "",
     kb_options = "",
@@ -128,8 +128,11 @@ end
 
 hl.bind(main_mod .. " + SHIFT + C", hl.dsp.exec_cmd("pkill waybar; waybar"))
 
-for i = 1, 10 do
-  local key = tostring(i % 10)
+local workspace_keys = {
+  "ampersand", "eacute", "quotedbl", "apostrophe", "parenleft",
+  "minus", "egrave", "underscore", "ccedilla", "agrave",
+}
+for i, key in ipairs(workspace_keys) do
   hl.bind(main_mod .. " + " .. key, hl.dsp.focus({ workspace = i }))
   hl.bind(main_mod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = i }))
 end

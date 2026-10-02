@@ -67,6 +67,10 @@ check_arch() {
     log_error "This script is designed for Arch Linux. pacman not found."
     exit 1
   fi
+  if ! command -v sudo &>/dev/null; then
+    log_error "sudo is required to install packages and enable system services. Install sudo and grant this user sudo access first."
+    exit 1
+  fi
   if [[ ! -f "$REPO_DIR/.config/hypr/hyprland.conf" || ! -d "$REPO_DIR/assets/wallpaper" ]]; then
     log_error "The installer could not find the required project files."
     log_error "It is checking this directory: $REPO_DIR"
@@ -77,6 +81,12 @@ check_arch() {
   fi
   local required_file
   for required_file in \
+    .config/hypr/hyprland.lua .config/hypr/configs/keybinds.conf \
+    .config/waybar/config.jsonc .config/cava/wayves/wayves.py \
+    .config/rofi/dmenu/launcher.sh .config/rofi/dmenu/style-1.rasi \
+    .config/rofi/wallchanger/wallpaperpicker.sh .config/rofi/wallchanger/wall_theme.rasi \
+    .config/hypr/Scripts/wlogout.sh .config/hypr/Scripts/hotcorner.sh \
+    .config/cava/wayves/scripts/play_cava.sh \
     scripts/volume_notif.sh scripts/bright_notif.sh scripts/battery_notif.sh \
     scripts/start_wallpaper.sh scripts/apply_wallpaper.sh scripts/random_wallpaper.sh \
     .config/wal/templates/colors-hyprland.conf .config/wal/templates/colors-waybar.css \
@@ -96,14 +106,17 @@ install_packages() {
     waybar swaync kitty awww rofi
     brightnessctl playerctl grim slurp jq wl-clipboard libnotify
     polkit-gnome fcitx5 fcitx5-gtk fcitx5-qt qt6ct
-    cava fastfetch htop neovim fzf git
+    cava fastfetch htop neovim fzf git wget
     networkmanager network-manager-applet nm-connection-editor bluez bluez-utils blueman
     pipewire pipewire-pulse pipewire-alsa wireplumber
     python bc imagemagick
     ttf-jetbrains-mono-nerd ttf-firacode-nerd noto-fonts-emoji
   )
 
-  sudo pacman -Syu --needed "${base_packages[@]}"
+  if ! sudo pacman -Syu --needed "${base_packages[@]}"; then
+    log_error "pacman could not finish the official package transaction; applications such as rofi may still be missing. Check the pacman error above."
+    return 1
+  fi
 
 }
 
@@ -153,7 +166,7 @@ create_backup() {
 copy_configs() {
   mkdir -p "$CONFIG_DIR"
 
-  local item name staged
+  local item name staged executable_config
   while IFS= read -r -d '' item; do
     local name=$(basename "$item")
     staged=$(mktemp -d "$CONFIG_DIR/.hyprdots-stage.XXXXXXXX")
@@ -165,6 +178,13 @@ copy_configs() {
     fi
     rmdir "$staged"
   done < <(find "$REPO_DIR/.config" -mindepth 1 -maxdepth 1 -print0)
+
+  for executable_config in \
+    hypr/Scripts/wlogout.sh hypr/Scripts/hotcorner.sh \
+    rofi/dmenu/launcher.sh rofi/wallchanger/wallpaperpicker.sh \
+    cava/wayves/scripts/play_cava.sh; do
+    chmod +x -- "$CONFIG_DIR/$executable_config"
+  done
 
   if [[ -d "$REPO_DIR/assets/wallpaper" ]]; then
     local wallpaper_dir="$HOME/Pictures/wallpaper"
@@ -192,7 +212,7 @@ install_local_scripts() {
 
 collect_missing_dependencies() {
   MISSING_DEPENDENCIES=()
-  local required_commands=(Hyprland hyprctl kitty waybar swaync swaync-client awww awww-daemon wal rofi wlogout hypridle hyprlock grim slurp jq wl-copy notify-send brightnessctl pactl wpctl playerctl nmtui nmcli nm-applet nm-connection-editor fcitx5 cava python bc magick pipewire wireplumber dbus-update-activation-environment)
+  local required_commands=(Hyprland hyprctl kitty waybar swaync swaync-client awww awww-daemon wal rofi wlogout hypridle hyprlock grim slurp jq wl-copy notify-send brightnessctl pactl wpctl playerctl nmtui nmcli nm-applet nm-connection-editor blueman-manager fcitx5 cava python bc magick pipewire wireplumber dbus-update-activation-environment htop wget xdg-open)
 
   for command_name in "${required_commands[@]}"; do
     command -v "$command_name" >/dev/null 2>&1 || MISSING_DEPENDENCIES+=("$command_name")
@@ -217,7 +237,9 @@ package_for_dependency() {
     pipewire) echo pipewire ;;
     nmtui|nmcli) echo networkmanager ;;
     nm-applet) echo network-manager-applet ;;
+    blueman-manager) echo blueman ;;
     magick) echo imagemagick ;;
+    xdg-open) echo xdg-utils ;;
     dbus-update-activation-environment) echo dbus ;;
     "Bibata-Modern-Ice cursor theme") echo bibata-cursor-theme ;;
     "polkit-gnome authentication agent") echo polkit-gnome ;;
