@@ -157,22 +157,73 @@ install_local_scripts() {
   cp -f "$REPO_DIR/assets/icons/brightness_"*.svg "$LOCAL_BIN_DIR/icons/"
 }
 
-check_runtime_dependencies() {
-  local missing=()
+collect_missing_dependencies() {
+  MISSING_DEPENDENCIES=()
   local required_commands=(Hyprland hyprctl kitty waybar swaync swaync-client swww swww-daemon wal rofi wlogout hypridle hyprlock grim slurp jq wl-copy notify-send brightnessctl pactl wpctl playerctl nmtui nmcli nm-connection-editor fcitx5 cava python bc magick pipewire wireplumber dbus-update-activation-environment)
 
   for command_name in "${required_commands[@]}"; do
-    command -v "$command_name" >/dev/null 2>&1 || missing+=("$command_name")
+    command -v "$command_name" >/dev/null 2>&1 || MISSING_DEPENDENCIES+=("$command_name")
   done
 
-  [[ -d /usr/share/icons/Bibata-Modern-Ice ]] || missing+=("Bibata-Modern-Ice cursor theme")
-  [[ -x /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 ]] || missing+=("polkit-gnome authentication agent")
-  [[ -d /usr/share/wayland-sessions ]] || missing+=("Wayland session files")
-  [[ -x /usr/lib/xdg-desktop-portal-hyprland ]] || missing+=("xdg-desktop-portal-hyprland")
+  [[ -d /usr/share/icons/Bibata-Modern-Ice ]] || MISSING_DEPENDENCIES+=("Bibata-Modern-Ice cursor theme")
+  [[ -x /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 ]] || MISSING_DEPENDENCIES+=("polkit-gnome authentication agent")
+  [[ -d /usr/share/wayland-sessions ]] || MISSING_DEPENDENCIES+=("Wayland session files")
+  [[ -x /usr/lib/xdg-desktop-portal-hyprland ]] || MISSING_DEPENDENCIES+=("xdg-desktop-portal-hyprland")
+}
 
-  if [[ ${#missing[@]} -gt 0 ]]; then
-    log_error "Required Hyprland components are missing: ${missing[*]}"
-    log_error "Install the missing official/AUR packages, then rerun this installer. No user configs were replaced."
+package_for_dependency() {
+  case "$1" in
+    Hyprland|hyprctl|"Wayland session files") echo hyprland ;;
+    swaync-client) echo swaync ;;
+    swww-daemon) echo swww ;;
+    wal) echo python-pywal16 ;;
+    wl-copy) echo wl-clipboard ;;
+    notify-send) echo libnotify ;;
+    pactl) echo pipewire-pulse ;;
+    wpctl|pipewire) echo pipewire ;;
+    nmtui|nmcli) echo networkmanager ;;
+    magick) echo imagemagick ;;
+    dbus-update-activation-environment) echo dbus ;;
+    "Bibata-Modern-Ice cursor theme") echo bibata-cursor-theme ;;
+    "polkit-gnome authentication agent") echo polkit-gnome ;;
+    xdg-desktop-portal-hyprland) echo xdg-desktop-portal-hyprland ;;
+    *) echo "$1" ;;
+  esac
+}
+
+check_runtime_dependencies() {
+  local dependency package
+  local official_packages=() aur_packages=()
+  declare -A seen_packages=()
+
+  collect_missing_dependencies
+  if ((${#MISSING_DEPENDENCIES[@]} == 0)); then
+    return 0
+  fi
+
+  log_warning "Some required components are missing; installing their packages..."
+  for dependency in "${MISSING_DEPENDENCIES[@]}"; do
+    package=$(package_for_dependency "$dependency")
+    [[ -n "${seen_packages[$package]:-}" ]] && continue
+    seen_packages[$package]=1
+    case "$package" in
+      python-pywal16|bibata-cursor-theme) aur_packages+=("$package") ;;
+      *) official_packages+=("$package") ;;
+    esac
+  done
+
+  if ((${#official_packages[@]} > 0)) && ! sudo pacman -S --needed "${official_packages[@]}"; then
+    log_error "Could not install: ${official_packages[*]}"
+    return 1
+  fi
+  if ((${#aur_packages[@]} > 0)) && ! yay -S --needed "${aur_packages[@]}"; then
+    log_error "Could not install AUR packages: ${aur_packages[*]}"
+    return 1
+  fi
+
+  collect_missing_dependencies
+  if ((${#MISSING_DEPENDENCIES[@]} > 0)); then
+    log_error "Still missing after installation: ${MISSING_DEPENDENCIES[*]}"
     return 1
   fi
 }
