@@ -9,10 +9,12 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Global variables
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+REPO_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 BACKUP_DIR="$HOME/.config/backup_dots_$(date +%Y%m%d_%H%M%S)_$$"
 CONFIG_DIR="$HOME/.config"
 LOCAL_BIN_DIR="$HOME/.local/bin"
+LOG_FILE=""
 
 # Logging functions
 log_info() {
@@ -27,6 +29,22 @@ log_error() {
   echo -e "${RED}[ERROR]${NC} $1"
 }
 
+setup_logging() {
+  local previous_umask
+  previous_umask=$(umask)
+  umask 077
+  mkdir -p "$HOME/.local/state/hyprdots"
+  LOG_FILE="$HOME/.local/state/hyprdots/install_$(date +%Y%m%d_%H%M%S)_$$.log"
+  : >"$LOG_FILE"
+  umask "$previous_umask"
+
+  exec > >(tee -a "$LOG_FILE") 2>&1
+  trap 'status=$?; trap - ERR; printf "[ERROR] at line %s (exit %s): %s\n" "$LINENO" "$status" "$BASH_COMMAND" >> "$LOG_FILE"; exit "$status"' ERR
+  log_info "Full terminal log: $LOG_FILE"
+  printf 'Started: %s\nScript: %s\nProject directory: %s\nWorking directory: %s\n' \
+    "$(date --iso-8601=seconds)" "$SCRIPT_PATH" "$REPO_DIR" "$PWD" >>"$LOG_FILE"
+}
+
 # Check if running on Arch Linux
 check_arch() {
   if [[ "$EUID" -eq 0 ]]; then
@@ -39,7 +57,11 @@ check_arch() {
     exit 1
   fi
   if [[ ! -f "$REPO_DIR/.config/hypr/hyprland.conf" || ! -d "$REPO_DIR/assets/wallpaper" ]]; then
-    log_error "Run this installer from the complete Hyprdots project directory."
+    log_error "The installer could not find the required project files."
+    log_error "It is checking this directory: $REPO_DIR"
+    [[ -f "$REPO_DIR/.config/hypr/hyprland.conf" ]] || log_error "Missing: $REPO_DIR/.config/hypr/hyprland.conf"
+    [[ -d "$REPO_DIR/assets/wallpaper" ]] || log_error "Missing directory: $REPO_DIR/assets/wallpaper"
+    log_error "Run install.sh from the complete Hyprdots project directory."
     exit 1
   fi
   local required_file
@@ -49,7 +71,7 @@ check_arch() {
     .config/wal/templates/colors-hyprland.conf .config/wal/templates/colors-waybar.css \
     .config/wal/templates/colors-hyprland.lua; do
     if [[ ! -f "$REPO_DIR/$required_file" ]]; then
-      log_error "Required project file is missing: $required_file"
+      log_error "Required project file is missing: $REPO_DIR/$required_file"
       exit 1
     fi
   done
@@ -401,6 +423,7 @@ display_summary() {
 }
 
 main() {
+  setup_logging
   clear
   echo -e "${BLUE}========================================${NC}"
   echo -e "${BLUE}           MyHyperDots Installer        ${NC}"
