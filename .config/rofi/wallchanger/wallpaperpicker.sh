@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# --- GLOBAL CONFIGURATION ---
+WALL_DIR="$HOME/Pictures/wallpaper"
+CACHE_DIR="$HOME/.cache/rofi-walls"
+
+# Ensure cache directory exists for optimized performance
+mkdir -p "$CACHE_DIR"
+
+# --- CORE FUNCTIONS ---
+
+# Generate high-performance thumbnails for Rofi's UI
+# Uses ImageMagick v7 to create portrait-oriented crops
+generate_thumbnails() {
+  find "$WALL_DIR" -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.jpeg" -o -name "*.webp" \) | while read -r img; do
+    fn=$(basename "$img")
+    if [ ! -f "$CACHE_DIR/$fn" ]; then
+      # Optimized for portrait aspect ratio: 300x500
+      magick "$img" -strip -resize "x500^" -gravity center -extent 300x500 "$CACHE_DIR/$fn"
+    fi
+  done
+}
+
+# Construct the formatted string list for Rofi dmenu
+# Icons are fetched from the local cache directory
+fetch_wallpapers() {
+  find "$WALL_DIR" -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.jpeg" -o -name "*.webp" \) | while read -r path; do
+    fn=$(basename "$path")
+    echo -en "$fn\0icon\x1f$CACHE_DIR/$fn\n"
+  done
+}
+
+# Initial execution: sync thumbnails
+generate_thumbnails
+
+# --- USER INTERACTION ---
+# Execute Rofi with custom theme and capture user selection
+selection=$(fetch_wallpapers | rofi -dmenu -i -p "󰸉 Select Wallpaper" -theme "$HOME/.config/rofi/wallchanger//wall_theme.rasi")
+
+# --- POST-SELECTION LOGIC ---
+if [ -n "$selection" ]; then
+  FULL_PATH="$WALL_DIR/$selection"
+  "$HOME/.local/bin/apply_wallpaper.sh" "$FULL_PATH"
+fi
