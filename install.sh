@@ -29,6 +29,15 @@ log_error() {
   echo -e "${RED}[ERROR]${NC} $1"
 }
 
+on_error() {
+  local status="$1" line="$2" command="$3"
+  trap - ERR
+  set +x
+  log_error "Installation stopped at line $line (exit $status): $command"
+  log_error "Full log: $LOG_FILE"
+  exit "$status"
+}
+
 setup_logging() {
   local previous_umask
   previous_umask=$(umask)
@@ -39,9 +48,9 @@ setup_logging() {
   umask "$previous_umask"
 
   exec > >(tee -a "$LOG_FILE") 2>&1
-  trap 'status=$?; trap - ERR; printf "[ERROR] at line %s (exit %s): %s\n" "$LINENO" "$status" "$BASH_COMMAND" >> "$LOG_FILE"; exit "$status"' ERR
+  trap 'on_error "$?" "$LINENO" "$BASH_COMMAND"' ERR
   log_info "Full terminal log: $LOG_FILE"
-  export PS4='+ [${BASH_SOURCE[0]##*/}:${LINENO}:${FUNCNAME[0]:-main}] '
+  PS4=$'\033[36m+ [${BASH_SOURCE[0]##*/}:${LINENO}:${FUNCNAME[0]:-main}] \033[0m'
   set -x
   printf 'Started: %s\nScript: %s\nProject directory: %s\nWorking directory: %s\n' \
     "$(date --iso-8601=seconds)" "$SCRIPT_PATH" "$REPO_DIR" "$PWD" >>"$LOG_FILE"
@@ -63,7 +72,7 @@ check_arch() {
     log_error "It is checking this directory: $REPO_DIR"
     [[ -f "$REPO_DIR/.config/hypr/hyprland.conf" ]] || log_error "Missing: $REPO_DIR/.config/hypr/hyprland.conf"
     [[ -d "$REPO_DIR/assets/wallpaper" ]] || log_error "Missing directory: $REPO_DIR/assets/wallpaper"
-    log_error "Run install.sh from the complete Hyprdots project directory."
+    log_error "Use the complete Hyprdots project directory; .config is hidden and must be copied too."
     exit 1
   fi
   local required_file
@@ -84,7 +93,7 @@ install_packages() {
   local base_packages=(
     hyprland hypridle hyprlock
     xdg-desktop-portal xdg-desktop-portal-hyprland xdg-desktop-portal-gtk xdg-utils dbus
-    waybar swaync kitty swww rofi wlogout
+    waybar swaync kitty awww rofi
     brightnessctl playerctl grim slurp jq wl-clipboard libnotify
     polkit-gnome fcitx5 fcitx5-gtk fcitx5-qt qt6ct
     cava fastfetch htop neovim fzf git
@@ -117,7 +126,7 @@ install_aur_packages() {
     rm -rf -- "$build_dir"
   fi
 
-  yay -S --needed python-pywal16 bibata-cursor-theme
+  yay -S --needed python-pywal16 bibata-cursor-theme wlogout
 }
 
 create_backup() {
@@ -183,7 +192,7 @@ install_local_scripts() {
 
 collect_missing_dependencies() {
   MISSING_DEPENDENCIES=()
-  local required_commands=(Hyprland hyprctl kitty waybar swaync swaync-client swww swww-daemon wal rofi wlogout hypridle hyprlock grim slurp jq wl-copy notify-send brightnessctl pactl wpctl playerctl nmtui nmcli nm-connection-editor fcitx5 cava python bc magick pipewire wireplumber dbus-update-activation-environment)
+  local required_commands=(Hyprland hyprctl kitty waybar swaync swaync-client awww awww-daemon wal rofi wlogout hypridle hyprlock grim slurp jq wl-copy notify-send brightnessctl pactl wpctl playerctl nmtui nmcli nm-connection-editor fcitx5 cava python bc magick pipewire wireplumber dbus-update-activation-environment)
 
   for command_name in "${required_commands[@]}"; do
     command -v "$command_name" >/dev/null 2>&1 || MISSING_DEPENDENCIES+=("$command_name")
@@ -199,12 +208,13 @@ package_for_dependency() {
   case "$1" in
     Hyprland|hyprctl|"Wayland session files") echo hyprland ;;
     swaync-client) echo swaync ;;
-    swww-daemon) echo swww ;;
+    awww-daemon) echo awww ;;
     wal) echo python-pywal16 ;;
     wl-copy) echo wl-clipboard ;;
     notify-send) echo libnotify ;;
     pactl) echo pipewire-pulse ;;
-    wpctl|pipewire) echo pipewire ;;
+    wpctl) echo wireplumber ;;
+    pipewire) echo pipewire ;;
     nmtui|nmcli) echo networkmanager ;;
     magick) echo imagemagick ;;
     dbus-update-activation-environment) echo dbus ;;
@@ -231,7 +241,7 @@ check_runtime_dependencies() {
     [[ -n "${seen_packages[$package]:-}" ]] && continue
     seen_packages[$package]=1
     case "$package" in
-      python-pywal16|bibata-cursor-theme) aur_packages+=("$package") ;;
+      python-pywal16|bibata-cursor-theme|wlogout) aur_packages+=("$package") ;;
       *) official_packages+=("$package") ;;
     esac
   done
@@ -377,7 +387,7 @@ generate_initial_wal() {
     wal -i "$random_wall" -n -q
 
     if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
-      swww img "$random_wall" --transition-type simple >/dev/null || log_warning "Could not update wallpaper in the active Hyprland session"
+      awww img "$random_wall" --transition-type simple >/dev/null || log_warning "Could not update wallpaper in the active Hyprland session"
     fi
 
   else
@@ -426,7 +436,6 @@ display_summary() {
 
 main() {
   setup_logging
-  clear
   echo -e "${BLUE}========================================${NC}"
   echo -e "${BLUE}           MyHyperDots Installer        ${NC}"
   echo -e "${BLUE}========================================${NC}\n"
